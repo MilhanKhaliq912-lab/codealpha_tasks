@@ -1,0 +1,204 @@
+import random
+WORD_LIST = ["python", "hangman", "laptop", "guitar", "jungle"]
+
+MAX_WRONG_GUESSES = 6
+
+HANGMAN_STAGES = [
+    # 0 wrong guesses
+    """
+       -----
+       |   |
+           |
+           |
+           |
+           |
+    =========
+    """,
+    # 1 wrong guess
+    """
+       -----
+       |   |
+       O   |
+           |
+           |
+           |
+    =========
+    """,
+    # 2 wrong guesses
+    """
+       -----
+       |   |
+       O   |
+       |   |
+           |
+           |
+    =========
+    """,
+    # 3 wrong guesses
+    """
+       -----
+       |   |
+       O   |
+      /|   |
+           |
+           |
+    =========
+    """,
+    # 4 wrong guesses
+    """
+       -----
+       |   |
+       O   |
+      /|\\  |
+           |
+           |
+    =========
+    """,
+    # 5 wrong guesses
+    """
+       -----
+       |   |
+       O   |
+      /|\\  |
+      /    |
+           |
+    =========
+    """,
+    # 6 wrong guesses — game over
+    """
+       -----
+       |   |
+       O   |
+      /|\\  |
+      / \\  |
+           |
+    =========
+    """,
+]
+
+
+# ──────────────────────────────────────────────
+# Helper Functions
+# ──────────────────────────────────────────────
+
+def choose_word():
+    """Randomly select and return a word from the word list."""
+    return random.choice(WORD_LIST)
+
+
+def display_board(wrong_guesses, guessed_letters, word):
+    """
+    Print the current game state: hangman figure, guessed letters,
+    and the word with blanks for un-guessed letters.
+
+    Args:
+        wrong_guesses (list): Letters guessed incorrectly so far.
+        guessed_letters (set): All letters the player has guessed.
+        word (str): The secret word to be guessed.
+    """
+    # Show hangman figure based on number of wrong guesses
+    print(HANGMAN_STAGES[len(wrong_guesses)])
+
+    # Show remaining attempts
+    remaining = MAX_WRONG_GUESSES - len(wrong_guesses)
+    print(f"  Wrong guesses ({len(wrong_guesses)}/{MAX_WRONG_GUESSES}): {', '.join(wrong_guesses) or 'None'}")
+    print(f"  Attempts remaining: {remaining}\n")
+
+    # Display the word with blanks
+    display_word = "  " + "  ".join(
+        letter if letter in guessed_letters else "_"
+        for letter in word
+    )
+    print(display_word)
+    print()
+
+
+def get_player_guess(guessed_letters):
+    """
+    Prompt the player for a valid, un-guessed single letter.
+
+    Args:
+        guessed_letters (set): Letters already guessed.
+
+    Returns:
+        str: A valid single lowercase letter.
+    """
+    while True:
+        guess = input("  Guess a letter: ").strip().lower()
+
+        if len(guess) != 1:
+            print("  ⚠  Please enter exactly one letter.\n")
+        elif not guess.isalpha():
+            print("  ⚠  Please enter a letter (a–z).\n")
+        elif guess in guessed_letters:
+            print(f"  ⚠  You already guessed '{guess}'. Try a different one.\n")
+        else:
+            return guess
+
+
+def check_win(word, guessed_letters):
+    """
+    Check whether the player has guessed all letters in the word.
+
+    Args:
+        word (str): The secret word.
+        guessed_letters (set): Letters guessed so far.
+
+    Returns:
+        bool: True if every letter in the word has been guessed.
+    """
+    return all(letter in guessed_letters for letter in word)
+
+
+# ──────────────────────────────────────────────
+# Main Game Logic
+# ──────────────────────────────────────────────
+
+def play_hangman():
+    """Run a single round of the Hangman game."""
+    print("\n" + "=" * 40)
+    print("       Welcome to HANGMAN!")
+    print("=" * 40)
+    print(f"  Guess the word — you have {MAX_WRONG_GUESSES} wrong guesses allowed.\n")
+
+    word = choose_word()
+    guessed_letters = set()   # All letters guessed (correct + wrong)
+    wrong_guesses = []        # Only the incorrect letters
+
+    # ── Game loop ──
+    while True:
+        display_board(wrong_guesses, guessed_letters, word)
+
+        # Check loss condition
+        if len(wrong_guesses) >= MAX_WRONG_GUESSES:
+            print(f"  ❌ Game Over! The word was: '{word.upper()}'\n")
+            break
+
+        # Check win condition
+        if check_win(word, guessed_letters):
+            print(f"  🎉 Congratulations! You guessed the word: '{word.upper()}'\n")
+            break
+
+        # Get and process the player's guess
+        guess = get_player_guess(guessed_letters)
+        guessed_letters.add(guess)
+
+        if guess in word:
+            print(f"\n  ✅ Nice! '{guess}' is in the word.\n")
+        else:
+            wrong_guesses.append(guess)
+            print(f"\n  ❌ '{guess}' is not in the word.\n")
+
+
+def main():
+    """Entry point — supports replaying the game."""
+    while True:
+        play_hangman()
+        again = input("  Play again? (y/n): ").strip().lower()
+        if again != "y":
+            print("\n  Thanks for playing Hangman! Goodbye 👋\n")
+            break
+
+
+if __name__ == "__main__":
+    main()
