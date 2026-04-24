@@ -1,0 +1,264 @@
+import csv
+import os
+from datetime import datetime
+
+
+# ──────────────────────────────────────────────
+# Hardcoded Stock Prices (USD)
+# ──────────────────────────────────────────────
+
+STOCK_PRICES = {
+    "AAPL":  182.50,   # Apple Inc.
+    "TSLA":  248.00,   # Tesla Inc.
+    "GOOGL": 175.30,   # Alphabet Inc.
+    "AMZN":  185.60,   # Amazon.com Inc.
+    "MSFT":  415.20,   # Microsoft Corp.
+    "NVDA":  875.40,   # NVIDIA Corp.
+    "META":  490.10,   # Meta Platforms Inc.
+    "NFLX":  635.80,   # Netflix Inc.
+}
+
+
+# ──────────────────────────────────────────────
+# Display Helpers
+# ──────────────────────────────────────────────
+
+def print_separator(char="─", width=52):
+    """Print a horizontal separator line."""
+    print(char * width)
+
+
+def display_available_stocks():
+    """Print all available stock symbols and their current prices."""
+    print("\n  📈 Available Stocks:")
+    print_separator()
+    print(f"  {'Symbol':<8} {'Company / Price':>20}")
+    print_separator()
+    company_names = {
+        "AAPL": "Apple Inc.",       "TSLA": "Tesla Inc.",
+        "GOOGL": "Alphabet Inc.",   "AMZN": "Amazon Inc.",
+        "MSFT": "Microsoft Corp.",  "NVDA": "NVIDIA Corp.",
+        "META": "Meta Platforms",   "NFLX": "Netflix Inc.",
+    }
+    for symbol, price in STOCK_PRICES.items():
+        name = company_names.get(symbol, "")
+        print(f"  {symbol:<8} {name:<20}  ${price:>8.2f}")
+    print_separator()
+
+
+# ──────────────────────────────────────────────
+# Input / Validation
+# ──────────────────────────────────────────────
+
+def get_stock_input():
+    """
+    Interactively collect multiple stock symbols and quantities from the user.
+    Supports adding multiple different companies and updating existing ones.
+
+    Returns:
+        dict: Mapping of stock symbol (str) → quantity (int).
+              Returns an empty dict if the user enters nothing.
+    """
+    portfolio = {}
+    print("\n  Enter stock symbols and quantities (type 'done' to finish).")
+    print("  ✅ You can add as many different companies as you want.")
+    print("  ✅ You can also re-enter a symbol to add more shares to it.\n")
+
+    while True:
+
+        # Show current portfolio so far
+        if portfolio:
+            print("  📋 Your portfolio so far:")
+            for sym, qty in portfolio.items():
+                print(f"      {sym}: {qty} share(s)")
+            print()
+
+        symbol = input("  Enter stock symbol (or 'done' to finish): ").strip().upper()
+
+        if symbol == "DONE":
+            if not portfolio:
+                print("  ⚠  You haven't added any stocks yet. Please add at least one.\n")
+                continue
+            break
+
+        if symbol not in STOCK_PRICES:
+            print(f"  ⚠  '{symbol}' is not available. Please choose from the table above.\n")
+            continue
+
+        # Get quantity
+        while True:
+            qty_str = input(f"  How many shares of {symbol} do you want to add? ").strip()
+            if qty_str.isdigit() and int(qty_str) > 0:
+                quantity = int(qty_str)
+                break
+            print("  ⚠  Please enter a positive whole number.\n")
+
+        # If symbol already exists, add on top
+        if symbol in portfolio:
+            portfolio[symbol] += quantity
+            print(f"  ✅ Updated {symbol}: now {portfolio[symbol]} share(s) total.\n")
+        else:
+            portfolio[symbol] = quantity
+            print(f"  ✅ Added {quantity} share(s) of {symbol}.\n")
+
+        # Ask if they want to add another
+        another = input("  ➕ Add another stock? (y/n): ").strip().lower()
+        if another != "y":
+            break
+        print()
+
+    return portfolio
+
+
+# ──────────────────────────────────────────────
+# Calculation
+# ──────────────────────────────────────────────
+
+def calculate_portfolio(portfolio):
+    """
+    Calculate the investment value for each stock and the grand total.
+
+    Args:
+        portfolio (dict): Symbol → quantity mapping.
+
+    Returns:
+        list[dict]: Each entry contains symbol, price, quantity, and value.
+        float: Grand total investment value.
+    """
+    results = []
+    total = 0.0
+
+    for symbol, quantity in portfolio.items():
+        price = STOCK_PRICES[symbol]
+        value = price * quantity
+        total += value
+        results.append({
+            "symbol":   symbol,
+            "price":    price,
+            "quantity": quantity,
+            "value":    value,
+        })
+
+    # Sort by investment value descending
+    results.sort(key=lambda x: x["value"], reverse=True)
+    return results, total
+
+
+# ──────────────────────────────────────────────
+# Display Results
+# ──────────────────────────────────────────────
+
+def display_portfolio(results, total):
+    """
+    Print a formatted portfolio summary table.
+
+    Args:
+        results (list[dict]): Per-stock breakdown.
+        total (float): Total portfolio value.
+    """
+    print("\n")
+    print_separator("═")
+    print("         📊  PORTFOLIO SUMMARY")
+    print_separator("═")
+    print(f"  {'Symbol':<8} {'Price':>10} {'Qty':>6} {'Value':>12}  {'Weight':>7}")
+    print_separator()
+
+    for row in results:
+        weight = (row["value"] / total * 100) if total > 0 else 0
+        print(
+            f"  {row['symbol']:<8}"
+            f"  ${row['price']:>8.2f}"
+            f"  {row['quantity']:>5}"
+            f"  ${row['value']:>10.2f}"
+            f"  {weight:>6.1f}%"
+        )
+
+    print_separator("═")
+    print(f"  {'TOTAL INVESTMENT':.<32}  ${total:>10.2f}")
+    print_separator("═")
+    print()
+
+
+# ──────────────────────────────────────────────
+# File Saving
+# ──────────────────────────────────────────────
+
+def save_to_csv(results, total, filename=None):
+    """
+    Save the portfolio summary to a CSV file.
+
+    Args:
+        results (list[dict]): Per-stock breakdown.
+        total (float): Total portfolio value.
+        filename (str, optional): Output filename. Auto-generated if None.
+    """
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"portfolio_{timestamp}.csv"
+
+    try:
+        with open(filename, "w", newline="") as csvfile:
+            fieldnames = ["Symbol", "Price_USD", "Quantity", "Total_Value_USD", "Weight_%"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            writer.writeheader()
+            for row in results:
+                weight = (row["value"] / total * 100) if total > 0 else 0
+                writer.writerow({
+                    "Symbol":          row["symbol"],
+                    "Price_USD":       f"{row['price']:.2f}",
+                    "Quantity":        row["quantity"],
+                    "Total_Value_USD": f"{row['value']:.2f}",
+                    "Weight_%":        f"{weight:.1f}",
+                })
+
+            # Write total row
+            writer.writerow({
+                "Symbol":          "TOTAL",
+                "Price_USD":       "",
+                "Quantity":        "",
+                "Total_Value_USD": f"{total:.2f}",
+                "Weight_%":        "100.0",
+            })
+
+        print(f"  💾 Portfolio saved to '{filename}'\n")
+
+    except IOError as e:
+        print(f"  ⚠  Could not save file: {e}\n")
+
+
+# ──────────────────────────────────────────────
+# Main
+# ──────────────────────────────────────────────
+
+def main():
+    """Entry point for the Stock Portfolio Tracker."""
+    print("\n" + "=" * 52)
+    print("       💹  STOCK PORTFOLIO TRACKER")
+    print("=" * 52)
+
+    display_available_stocks()
+
+    # Collect user input
+    portfolio = get_stock_input()
+
+    if not portfolio:
+        print("  ℹ  No stocks entered. Exiting.\n")
+        return
+
+    # Calculate and display results
+    results, total = calculate_portfolio(portfolio)
+    display_portfolio(results, total)
+
+    # Optional: save to CSV
+    save_choice = input("  Save portfolio to CSV? (y/n): ").strip().lower()
+    if save_choice == "y":
+        save_to_csv(results, total)
+    else:
+        print("  Portfolio not saved.\n")
+
+    print("  Thank you for using Stock Portfolio Tracker! 👋\n")
+
+
+if __name__ == "__main__":
+    main()
