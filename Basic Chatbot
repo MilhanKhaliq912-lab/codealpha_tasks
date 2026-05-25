@@ -1,0 +1,126 @@
+"""
+Task 2: Basic Rule-Based Chatbot
+Goal   : Respond to user input with predefined replies.
+Concepts: if-elif, functions, loops, input/output, str methods
+"""
+
+# ── Response map ──────────────────────────────────────────────────────────────
+# Each key is a tuple of trigger phrases; the value is the bot reply.
+# Keywords are matched case-insensitively against the user input.
+
+RESPONSES = {
+    # Greetings
+    ("hello", "hi", "hey", "howdy", "hiya", "sup"):
+        "Hi there! How can I help you today?",
+
+    # Asking how the bot is
+    ("how are you", "how r u", "how are u", "how do you do", "you ok", "you good"):
+        "I'm doing great, thanks for asking! How about you?",
+
+    # User feeling good
+    ("i'm good", "i am good", "i'm fine", "i am fine", "great", "not bad", "doing well"):
+        "Glad to hear that! Is there anything I can help you with?",
+
+    # User feeling bad
+    ("i'm sad", "i am sad", "i'm not good", "not good", "i feel bad", "terrible"):
+        "I'm sorry to hear that. I hope things get better soon!",
+
+    # What is the bot / who are you
+    ("what are you", "who are you", "what's your name", "your name"):
+        "I'm PyBot — a simple rule-based chatbot written in Python!",
+
+    # Capabilities
+    ("what can you do", "help", "commands", "what do you know"):
+        "I can chat! Try: hello, how are you, tell me a joke, what's the time, or bye.",
+
+    # Joke
+    ("joke", "tell me a joke", "make me laugh", "funny"):
+        "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+
+    # Current time
+    ("time", "what time", "what's the time", "current time"):
+        "__TIME__",   # placeholder — replaced at runtime
+
+    # Thanks
+    ("thanks", "thank you", "thx", "ty"):
+        "You're welcome! Anything else I can help with?",
+
+    # Goodbye
+    ("bye", "goodbye", "see you", "exit", "quit", "cya", "later"):
+        "Goodbye! Have a wonderful day! 👋",
+}
+
+# Words that signal the bot should exit the loop
+EXIT_KEYWORDS = {"bye", "goodbye", "exit", "quit", "cya", "later", "see you"}
+
+
+# ── Core logic ────────────────────────────────────────────────────────────────
+
+def get_reply(user_input: str) -> str:
+    """
+    Return the bot's reply for a given user input.
+
+    Steps:
+      1. Normalise: lowercase + strip punctuation from edges.
+      2. Check each keyword group in RESPONSES.
+      3. If any keyword appears anywhere in the input → return that reply.
+      4. Fall back to a default "I don't understand" message.
+    """
+    import datetime
+
+    # Step 1 – normalise
+    text = user_input.lower().strip().rstrip("!?.,")
+
+    # Step 2 & 3 – keyword matching
+    for keywords, reply in RESPONSES.items():
+        for keyword in keywords:
+            if keyword in text:
+                # Special case: inject real time
+                if reply == "__TIME__":
+                    now = datetime.datetime.now().strftime("%I:%M %p")
+                    return f"The current time is {now}."
+                return reply
+
+    # Step 4 – fallback
+    return (
+        "Hmm, I didn't quite catch that. Try saying 'help' to see what I understand."
+    )
+
+
+def is_exit(user_input: str) -> bool:
+    """Return True if the user wants to end the conversation."""
+    text = user_input.lower().strip().rstrip("!?.,")
+    return any(word in text for word in EXIT_KEYWORDS)
+
+
+# ── Main conversation loop ────────────────────────────────────────────────────
+
+def run_chatbot():
+    """Start the interactive chatbot loop (terminal mode)."""
+    print("=" * 50)
+    print("  PyBot — Rule-Based Chatbot")
+    print("  Type 'bye' or 'quit' to exit.")
+    print("=" * 50)
+    print()
+
+    while True:
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBot: Goodbye!")
+            break
+
+        if not user_input:
+            continue
+
+        reply = get_reply(user_input)
+        print(f"Bot: {reply}\n")
+
+        if is_exit(user_input):
+            break
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    run_chatbot()
