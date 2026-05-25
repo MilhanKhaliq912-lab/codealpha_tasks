@@ -1,0 +1,118 @@
+"""
+Task 1B: Extract all email addresses from a .txt file and save them.
+Concepts: re (regex), file handling
+"""
+
+import re
+import os
+from collections import Counter
+
+
+# RFC-5321-inspired pattern – catches the vast majority of real-world addresses
+EMAIL_PATTERN = re.compile(
+    r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+)
+
+
+def extract_emails(input_file: str, output_file: str, unique_only: bool = True) -> dict:
+    """
+    Extract email addresses from input_file and write them to output_file.
+
+    Args:
+        input_file:  Path to the source .txt file
+        output_file: Path where extracted emails will be saved
+        unique_only: If True, deduplicate (case-insensitive); default True
+
+    Returns:
+        dict with all_found list, saved list, and counts
+    """
+    result = {"all_found": [], "saved": [], "total_found": 0, "total_saved": 0}
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file not found: {input_file}")
+
+    print(f"📄 Reading : {os.path.abspath(input_file)}")
+
+    with open(input_file, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()
+
+    all_emails = EMAIL_PATTERN.findall(content)
+    result["all_found"] = all_emails
+    result["total_found"] = len(all_emails)
+
+    if unique_only:
+        # Deduplicate preserving first-occurrence order, case-insensitive
+        seen = set()
+        unique_emails = []
+        for email in all_emails:
+            key = email.lower()
+            if key not in seen:
+                seen.add(key)
+                unique_emails.append(email)
+        emails_to_save = unique_emails
+    else:
+        emails_to_save = all_emails
+
+    result["saved"] = emails_to_save
+    result["total_saved"] = len(emails_to_save)
+
+    # Write output
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(f"# Extracted Emails\n")
+        f.write(f"# Source : {os.path.abspath(input_file)}\n")
+        f.write(f"# Found  : {result['total_found']}  |  Saved: {result['total_saved']}\n")
+        f.write("#" + "-" * 48 + "\n\n")
+        for email in emails_to_save:
+            f.write(email + "\n")
+
+    print(f"🔍 Emails found : {result['total_found']}")
+    print(f"💾 Emails saved : {result['total_saved']} {'(unique)' if unique_only else ''}")
+    print(f"📄 Output file  : {os.path.abspath(output_file)}")
+
+    # Show domain stats
+    domains = Counter(e.split("@")[1].lower() for e in emails_to_save)
+    print("\n📊 Top domains:")
+    for domain, count in domains.most_common(5):
+        print(f"   {domain}: {count}")
+
+    return result
+
+
+# ── Demo ───────────────────────────────────────────────────────────────────────
+SAMPLE_TEXT = """
+Welcome to our newsletter!
+Contact us at info@example.com or support@mysite.org.
+
+Users registered this week:
+  - alice@gmail.com
+  - BOB.SMITH@yahoo.com
+  - charlie_99@outlook.com
+  - alice@gmail.com          (duplicate – should be filtered)
+  - no-reply@company.co.uk
+  - test.user+tag@domain.io
+
+Invalid addresses (should NOT be captured):
+  @missinglocal.com
+  user@.com
+  plain-text
+
+Footer: unsubscribe@newsletter.example.com | privacy@newsletter.example.com
+"""
+
+if __name__ == "__main__":
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        in_file  = os.path.join(tmp, "raw_data.txt")
+        out_file = os.path.join(tmp, "emails.txt")
+
+        with open(in_file, "w") as f:
+            f.write(SAMPLE_TEXT)
+
+        print("=== DEMO: Extract Email Addresses ===\n")
+        stats = extract_emails(in_file, out_file, unique_only=True)
+
+        print("\n--- Saved emails ---")
+        with open(out_file) as f:
+            print(f.read())
