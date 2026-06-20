@@ -1,0 +1,82 @@
+"""
+Task: Move all .jpg files from a source folder to a new destination folder.
+
+Key concepts used:
+- os       -> walking/listing directories, building paths, checking existence
+- shutil   -> moving files
+- re       -> matching filenames against a .jpg pattern (case-insensitive)
+- file handling -> creating the destination folder if it doesn't exist
+"""
+
+import os
+import shutil
+import re
+
+# ---------------------------------------------------------
+# CONFIGURATION - edit these two paths for your use case
+# ---------------------------------------------------------
+SOURCE_FOLDER = r"C:\Users\Milhan A.Khaliq\Pictures\PhoneBackup"     # folder to scan for .jpg files
+DEST_FOLDER = r"C:\Users\Milhan A.Khaliq\Pictures\JPGsOnly"   # folder where .jpg files will be moved
+
+# Regex pattern to match .jpg files (case-insensitive: .jpg, .JPG, .Jpg, etc.)
+JPG_PATTERN = re.compile(r".*\.jpg$", re.IGNORECASE)
+
+
+def move_jpg_files(source_folder: str, dest_folder: str) -> None:
+    """
+    Move all .jpg files from source_folder to dest_folder.
+
+    Args:
+        source_folder: path to the folder containing files to scan.
+        dest_folder: path to the folder where .jpg files will be moved.
+    """
+
+    # 1. Validate source folder exists
+    if not os.path.isdir(source_folder):
+        print(f"Error: source folder '{source_folder}' does not exist.")
+        return
+
+    # 2. Create destination folder if it doesn't exist
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+        print(f"Created destination folder: '{dest_folder}'")
+
+    moved_count = 0
+    skipped_count = 0
+
+    # 3. List all entries in the source folder
+    for filename in os.listdir(source_folder):
+        source_path = os.path.join(source_folder, filename)
+
+        # Only process actual files (skip subfolders)
+        if not os.path.isfile(source_path):
+            continue
+
+        # 4. Check if filename matches the .jpg pattern
+        if JPG_PATTERN.match(filename):
+            dest_path = os.path.join(dest_folder, filename)
+
+            # 5. Avoid overwriting existing files in destination
+            if os.path.exists(dest_path):
+                base, ext = os.path.splitext(filename)
+                counter = 1
+                new_dest_path = os.path.join(dest_folder, f"{base}_{counter}{ext}")
+                while os.path.exists(new_dest_path):
+                    counter += 1
+                    new_dest_path = os.path.join(dest_folder, f"{base}_{counter}{ext}")
+                dest_path = new_dest_path
+
+            # 6. Move the file
+            shutil.move(source_path, dest_path)
+            print(f"Moved: {filename} -> {dest_path}")
+            moved_count += 1
+        else:
+            skipped_count += 1
+
+    print("\n--- Summary ---")
+    print(f"Total .jpg files moved : {moved_count}")
+    print(f"Other files skipped    : {skipped_count}")
+
+
+if __name__ == "__main__":
+    move_jpg_files(SOURCE_FOLDER, DEST_FOLDER)
